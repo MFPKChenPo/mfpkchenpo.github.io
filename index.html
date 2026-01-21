@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>2026 極限多巴胺 · 完整版</title>
+    <title>2026 極限多巴胺 · 手勢感應版</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Noto+Sans+TC:wght@300;500;700&display=swap');
         
-        body { font-family: 'Noto Sans TC', sans-serif; background: #020617; color: #f8fafc; overflow-x: hidden; -webkit-user-select: none; }
+        body { font-family: 'Noto Sans TC', sans-serif; background: #020617; color: #f8fafc; overflow-x: hidden; -webkit-user-select: none; touch-action: pan-y; }
         
         .bg-mesh {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
@@ -64,106 +64,118 @@
         .glow-text { text-shadow: 0 0 15px rgba(99, 102, 241, 0.6); font-family: 'Orbitron', sans-serif; }
         .hold-hint { font-size: 8px; font-weight: bold; color: rgba(99, 102, 241, 0.8); position: absolute; bottom: 12px; right: 16px; letter-spacing: 1px; }
 
+        /* 左右切換動畫 */
+        .slide-fade-enter-active, .slide-fade-leave-active { transition: all 0.3s ease-out; }
+        .slide-fade-enter-from { opacity: 0; transform: translateX(30px); }
+        .slide-fade-leave-to { opacity: 0; transform: translateX(-30px); }
+
         [v-cloak] { display: none; }
     </style>
 </head>
 <body class="pb-28">
-    <div id="app" v-cloak>
+    <div id="app" v-cloak @touchstart="touchStart" @touchend="touchEnd">
         <div class="bg-mesh"></div>
 
         <transition name="fade">
             <div v-if="activeTip" class="popover-blur" @click="activeTip = null">
                 <div class="glass-card p-8 border-indigo-500 shadow-2xl max-w-sm text-center">
                     <div class="w-12 h-12 bg-indigo-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="fa-solid fa-plane-arrival text-indigo-400 text-xl"></i>
+                        <i class="fa-solid fa-wand-magic-sparkles text-indigo-400 text-xl"></i>
                     </div>
                     <h4 class="text-indigo-300 font-bold mb-3 tracking-widest uppercase text-xs">Expert Review</h4>
                     <p class="text-white/90 leading-relaxed text-sm italic">"{{ activeTip }}"</p>
-                    <div class="mt-6 text-[9px] text-white/30 uppercase tracking-[0.2em]">Close</div>
+                    <div class="mt-6 text-[9px] text-white/30 uppercase tracking-[0.2em]">Swipe to close</div>
                 </div>
             </div>
         </transition>
 
         <header class="p-8 text-center">
-            <h1 class="text-4xl glow-text font-bold text-indigo-400 uppercase">Dopamine 2026</h1>
-            <p class="text-[9px] tracking-[0.4em] opacity-40 mt-2 font-black uppercase text-blue-200">Ultimate Snow Expedition</p>
+            <h1 class="text-4xl glow-text font-bold text-indigo-400">APPI 2026</h1>
+            <div class="flex items-center justify-center gap-2 mt-2">
+                <span class="h-[1px] w-4 bg-indigo-500/50"></span>
+                <p class="text-[9px] tracking-[0.3em] opacity-40 font-black uppercase text-blue-100">Swipe Left/Right to Switch</p>
+                <span class="h-[1px] w-4 bg-indigo-500/50"></span>
+            </div>
         </header>
 
         <nav class="sticky top-0 z-50 px-4 py-4 flex overflow-x-auto no-scrollbar gap-3 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5">
             <button v-for="n in 8" :key="n" @click="currentTab = n" 
+                :id="'tab-' + n"
                 :class="['flex-none w-12 h-12 rounded-2xl flex items-center justify-center font-bold transition-all border border-white/10 text-white/40', currentTab === n ? 'nav-active' : 'bg-white/5']">
                 {{n}}
             </button>
             <button @click="currentTab = 'list'" 
                 :class="['flex-none px-6 h-12 rounded-2xl flex items-center justify-center font-bold transition-all border border-white/10 text-white/40', currentTab === 'list' ? 'nav-active' : 'bg-white/5']">
-                <i class="fa-solid fa-clipboard-list"></i>
+                <i class="fa-solid fa-suitcase"></i>
             </button>
         </nav>
 
         <main class="px-6 py-6">
-            <div v-if="typeof currentTab === 'number'">
-                <div class="text-center mb-10">
-                    <h2 class="text-3xl font-bold tracking-tight text-white italic uppercase">{{ days[currentTab-1].theme }}</h2>
-                    <p class="text-indigo-400 text-xs font-mono mt-2">{{ days[currentTab-1].date }} // {{ days[currentTab-1].loc }}</p>
-                </div>
-
-                <div class="timeline-container">
-                    <div class="timeline-line"></div>
-                    
-                    <div v-for="(item, idx) in days[currentTab-1].events" :key="idx" 
-                        class="glass-card p-6"
-                        :class="{'is-pressing': pressingIdx === idx}"
-                        @touchstart="handleTouchStart(idx, item.tip)"
-                        @touchend="handleTouchEnd"
-                        @mousedown="handleTouchStart(idx, item.tip)"
-                        @mouseup="handleTouchEnd">
-                        
-                        <div class="timeline-dot"></div>
-                        
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="text-[10px] font-black text-indigo-400 font-mono tracking-widest">{{ item.time }}</span>
-                            <div v-if="item.highlight" class="flex items-center gap-1 bg-red-500/20 px-2 py-0.5 rounded-full border border-red-500/40">
-                                <span class="w-1 h-1 bg-red-500 rounded-full animate-pulse"></span>
-                                <span class="text-[8px] text-red-400 font-bold uppercase">Priority</span>
-                            </div>
-                        </div>
-                        
-                        <h3 class="text-lg font-bold text-white/95 leading-tight">{{ item.title }}</h3>
-                        <p class="text-xs text-white/40 mt-2 leading-relaxed font-light">{{ item.desc }}</p>
-                        
-                        <div v-if="item.price" class="mt-4 inline-flex items-center text-emerald-400 text-[10px] font-bold bg-emerald-400/10 px-2 py-1 rounded">
-                            <i class="fa-solid fa-tag mr-1"></i>{{ item.price }}
-                        </div>
-
-                        <div class="hold-hint">HOLD</div>
+            <transition name="slide-fade" mode="out-in">
+                <div :key="currentTab" v-if="typeof currentTab === 'number'">
+                    <div class="text-center mb-10">
+                        <h2 class="text-3xl font-bold tracking-tight text-white italic uppercase">{{ days[currentTab-1].theme }}</h2>
+                        <p class="text-indigo-400 text-xs font-mono mt-2 tracking-tighter">{{ days[currentTab-1].date }} // {{ days[currentTab-1].loc }}</p>
                     </div>
-                </div>
-            </div>
 
-            <div v-else class="space-y-6">
-                <div v-for="cat in packing" :key="cat.category" class="glass-card p-6 border-t-2 border-indigo-500/30">
-                    <h3 class="text-indigo-300 font-bold mb-6 flex items-center italic text-sm">
-                        <i :class="['fa-solid mr-3 text-lg', cat.icon]"></i> {{ cat.category }}
-                    </h3>
-                    <div class="grid gap-3">
-                        <div v-for="item in cat.items" :key="item.name" @click="item.checked = !item.checked"
-                            class="flex items-center p-4 rounded-2xl bg-white/5 border border-white/5 transition-all">
-                            <div :class="['w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all', item.checked ? 'bg-indigo-500 border-indigo-500' : 'border-white/20']">
-                                <i v-if="item.checked" class="fa-solid fa-check text-white text-xs"></i>
+                    <div class="timeline-container">
+                        <div class="timeline-line"></div>
+                        
+                        <div v-for="(item, idx) in days[currentTab-1].events" :key="idx" 
+                            class="glass-card p-6"
+                            :class="{'is-pressing': pressingIdx === idx}"
+                            @touchstart.stop="handleTouchStart(idx, item.tip)"
+                            @touchend.stop="handleTouchEnd"
+                            @mousedown="handleTouchStart(idx, item.tip)"
+                            @mouseup="handleTouchEnd">
+                            
+                            <div class="timeline-dot"></div>
+                            
+                            <div class="flex justify-between items-center mb-3">
+                                <span class="text-[10px] font-black text-indigo-400 font-mono tracking-widest">{{ item.time }}</span>
+                                <div v-if="item.highlight" class="flex items-center gap-1 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">
+                                    <span class="w-1 h-1 bg-red-500 rounded-full animate-pulse"></span>
+                                    <span class="text-[8px] text-red-400 font-bold uppercase">Must Go</span>
+                                </div>
                             </div>
-                            <div class="ml-4 flex-1">
-                                <span :class="['text-sm transition-all block', item.checked ? 'opacity-20 line-through' : 'text-white/80']">{{ item.name }}</span>
+                            
+                            <h3 class="text-lg font-bold text-white/95 leading-tight">{{ item.title }}</h3>
+                            <p class="text-xs text-white/40 mt-2 leading-relaxed font-light">{{ item.desc }}</p>
+                            
+                            <div v-if="item.price" class="mt-4 inline-flex items-center text-emerald-400 text-[10px] font-bold bg-emerald-400/10 px-2 py-1 rounded">
+                                <i class="fa-solid fa-tag mr-1"></i>{{ item.price }}
                             </div>
+
+                            <div class="hold-hint">HOLD</div>
                         </div>
                     </div>
                 </div>
-            </div>
+
+                <div :key="'list-view'" v-else class="space-y-6">
+                    <div v-for="cat in packing" :key="cat.category" class="glass-card p-6 border-t-2 border-indigo-500/30">
+                        <h3 class="text-indigo-300 font-bold mb-6 flex items-center italic text-sm">
+                            <i :class="['fa-solid mr-3 text-lg', cat.icon]"></i> {{ cat.category }}
+                        </h3>
+                        <div class="grid gap-3">
+                            <div v-for="item in cat.items" :key="item.name" @click="item.checked = !item.checked"
+                                class="flex items-center p-4 rounded-2xl bg-white/5 border border-white/5 transition-all">
+                                <div :class="['w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all', item.checked ? 'bg-indigo-500 border-indigo-500' : 'border-white/20']">
+                                    <i v-if="item.checked" class="fa-solid fa-check text-white text-xs"></i>
+                                </div>
+                                <div class="ml-4 flex-1">
+                                    <span :class="['text-sm transition-all block', item.checked ? 'opacity-20 line-through' : 'text-white/80']">{{ item.name }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </transition>
         </main>
 
         <div class="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-10 px-10 py-5 glass-card border-white/10 shadow-2xl z-50">
-            <button @click="currentTab = 1" class="text-white/30 hover:text-white"><i class="fa-solid fa-igloo"></i></button>
-            <button @click="currentTab = 8" class="text-indigo-400"><i class="fa-solid fa-plane-departure"></i></button>
-            <button @click="currentTab = 'list'" class="text-white/30 hover:text-white"><i class="fa-solid fa-tasks"></i></button>
+            <button @click="currentTab = 1" class="text-white/30 hover:text-white"><i class="fa-solid fa-home"></i></button>
+            <button @click="currentTab = 8" class="text-indigo-400"><i class="fa-solid fa-plane"></i></button>
+            <button @click="currentTab = 'list'" class="text-white/30 hover:text-white"><i class="fa-solid fa-check-double"></i></button>
         </div>
     </div>
 
@@ -176,52 +188,96 @@
                 const activeTip = ref(null);
                 const pressingIdx = ref(null);
                 let pressTimer = null;
+                
+                // 滑動偵測變數
+                let touchStartX = 0;
+                let touchEndX = 0;
 
                 const days = [
                     { date: 'FEB 01', loc: 'TAIPEI / SENDAI', theme: 'The Inbound', events: [
-                        { time: '11:50', title: '星宇航 JX862', desc: '星宇航空 A321neo 出發。', tip: '專業建議：桃園二航廈星宇櫃檯人潮較多，建議使用網路報到領取 QR Code。機上胡同燒肉餐點是熱門項，建議提早預訂。' },
-                        { time: '17:30', title: 'APPI 接駁巴士', desc: '仙台機場 ➔ 安比高原。', tip: '專業建議：接駁車司機會在機場入境大廳手持 Appi Kogen 牌子。路程漫長，請在機場 1F 的超商備妥飲用水。' },
-                        { time: '20:30', title: 'Check-in ANA CP', desc: '入駐安比高原皇冠假日飯店。', tip: '專業建議：抵達後請先確認翌日早餐卷發放方式，飯店非常大，建議睡前看一眼樓層地圖以免迷路。' }
+                        { time: '11:50', title: '星宇航 JX862', desc: '台北 ➔ 仙台直飛。', tip: '專業建議：桃園二航廈星宇櫃檯人潮較多，建議使用網路報到。機上胡同燒肉餐點是熱門項，建議提早預訂。' },
+                        { time: '17:30', title: 'APPI 接駁巴士', desc: '仙台機場 ➔ 安比高原。', price: '¥7,000', tip: '專業建議：接駁車司機會在機場入境大廳手持牌子。路程漫長，請在機場超商備妥飲用水。' },
+                        { time: '20:30', title: 'Check-in ANA CP', desc: '入駐安比高原皇冠假日飯店。', tip: '專業建議：飯店非常大，建議睡前看一眼樓層地圖以免迷路。' }
                     ]},
                     { date: 'FEB 02', loc: 'APPI', theme: 'Snow Therapy', events: [
-                        { time: '09:00', title: 'APPI 滑雪啟動', desc: '初雪挑戰與裝備調整。', price: '¥15,000', tip: '專業建議：雪場租借區人潮多，建議 08:30 就位。若雪況極佳，首推「大開拓」滑道。' },
-                        { time: '18:00', title: '燒肉 李朝苑', desc: '極致前澤牛享受。', highlight: true, tip: '專業建議：雖然前澤牛是亮點，但他們的冷麵與牛骨湯也是一絕，非常暖胃。' }
+                        { time: '09:00', title: 'APPI 滑雪啟動', desc: '初雪挑戰與裝備調整。', price: '¥15,000', tip: '專業建議：雪場租借區人潮多，建議 08:30 就位。' },
+                        { time: '18:00', title: '燒肉 李朝苑', desc: '極致前澤牛享受。', highlight: true, tip: '專業建議：前澤牛油脂豐富，記得配泡菜或生菜中和。' }
                     ]},
                     { date: 'FEB 03', loc: 'APPI', theme: 'Infinite Run', events: [
-                        { time: '10:00', title: '西館山全域滑行', desc: '技術練習與影像紀錄。', tip: '專業建議：西館山的日照充足，適合在 11:00 前拍出清晰的滑雪美照。' },
-                        { time: '17:00', title: '白樺之湯 溫泉', desc: '雪地露天溫泉放鬆。', tip: '專業建議：記得帶一條飯店房內的小毛巾，溫泉區不提供額外毛巾。' }
+                        { time: '10:00', title: '西館山巡航', desc: '技術練習與影像紀錄。', tip: '專業建議：西館山的日照充足，適合在 11:00 前拍美照。' },
+                        { time: '17:00', title: '白樺之湯 溫泉', desc: '雪地露天溫泉放鬆。', tip: '專業建議：溫泉出口處有免費冷水供飲用。' }
                     ]},
                     { date: 'FEB 04', loc: 'APPI', theme: 'Epic Cruise', events: [
-                        { time: '09:30', title: '5.5KM 頂峰滑走', desc: '從山頂一躍而下的長程體驗。', tip: '專業建議：山頂風大可能停開纜車，建議早上先看氣象看板，若有開就優先衝山頂。' },
-                        { time: '18:30', title: 'Lapin d\'Or 法餐', desc: '高級法式晚宴。', highlight: true, tip: '專業建議：這是此行最正式的餐點，建議整理一下頭髮並換上較體面的外套。' }
+                        { time: '09:30', title: '5.5KM 頂峰滑走', desc: '全山最長路徑。', tip: '專業建議：早上先看氣象看板，若山頂纜車有開就優先衝山頂。' },
+                        { time: '18:30', title: 'Lapin d\'Or 法餐', desc: '高級法式晚宴。', highlight: true, tip: '專業建議：建議換上較體面的外套，慶祝滑雪行程大成功。' }
                     ]},
                     { date: 'FEB 05', loc: 'SENDAI', theme: 'Urban Shelter', events: [
-                        { time: '13:00', title: '別墅入駐', desc: '仙台包棟別墅 Check-in。', tip: '專業建議：別墅生活適合下廚，可以去附近的 AEON 超市購買新鮮當季草莓與牛奶。' },
-                        { time: '19:00', title: '牛たん閣', desc: '仙台牛舌頂級名店。', highlight: true, tip: '專業建議：一定要排隊，別被人群嚇跑。牛舌刺身只有這裡吃得出那種甜度。' }
+                        { time: '13:00', title: '別墅入駐', desc: '仙台包棟別墅 Check-in。', tip: '專業建議：別墅生活適合下廚，可以去超市買宮城草莓與牛奶。' },
+                        { time: '19:00', title: '牛たん閣', desc: '仙台牛舌頂級名店。', highlight: true, tip: '專業建議：牛舌刺身只有這裡吃得出那種甜度，必點。' }
                     ]},
                     { date: 'FEB 06', loc: 'ZAO', theme: 'White Monsters', events: [
-                        { time: '10:00', title: '藏王樹冰', desc: '搭乘纜車觀看雪怪。', price: '¥3,800', tip: '專業建議：纜車分為兩段，第二段更冷。請務必戴上毛帽與圍脖保護耳朵。' },
-                        { time: '15:00', title: '狐狸村', desc: '療癒狐狸觀察。', tip: '專業建議：這裡禁止攜帶任何垂吊飾物，狐狸會搶。拍照時請保持一定距離。' }
+                        { time: '10:00', title: '藏王樹冰', desc: '搭乘纜車觀看雪怪。', price: '¥3,800', tip: '專業建議：山頂極冷！手機容易斷電，請貼著暖暖包放口袋。' },
+                        { time: '15:00', title: '狐狸村', desc: '療癒狐狸觀察。', tip: '專業建議：嚴禁攜帶垂吊飾物，狐狸會搶。' }
                     ]},
                     { date: 'FEB 07', loc: 'GINZAN', theme: 'Timeless Night', events: [
-                        { time: '11:00', title: '山寺石階挑戰', desc: '雪中千階梯之旅。', tip: '專業建議：階梯濕滑，沒冰爪絕對不要嘗試，入口處可以租借雨鞋。' },
-                        { time: '16:45', title: '銀山溫泉點燈', desc: '大正浪漫時刻。', highlight: true, tip: '專業建議：晚間拍照光線暗，腳架或手機防震模式請預先設定好。' }
+                        { time: '11:00', title: '山寺石階挑戰', desc: '雪中千階梯。', tip: '專業建議：階梯濕滑，沒冰爪絕對不要嘗試。' },
+                        { time: '16:45', title: '銀山溫泉點燈', desc: '大正浪漫時刻。', highlight: true, tip: '專業建議：站在第三座橋上能拍到溫泉街全景。' }
                     ]},
                     { date: 'FEB 08', loc: 'SENDAI / TAIPEI', theme: 'Final Legacy', events: [
-                        { time: '08:30', title: '仙台朝市', desc: '「仙台人的廚房」巡禮。體驗充滿活力的市場，品嚐最新鮮的海鮮。', tip: '專業建議：必吃「朝市丼」，只要 ¥500 就能吃到滿滿海味。另外推廣「齋藤惣菜店」的可樂餅，是朝市的明星美食。' },
-                        { time: '10:30', title: '仙台站 S-PAL 採買', desc: '最後的伴手禮衝刺。包含萩之月、善治郎牛舌乾等。', tip: '專業建議：S-PAL 的伴手禮區非常集中，可以一次辦理退稅。若要帶牛舌回台灣，必須選購「常溫處理過」且符合防疫規定的熟食包。' },
-                        { time: '13:00', title: '前往仙台機場 (SDJ)', desc: '搭乘仙台 Access 線快鐵，僅需 25 分鐘。', tip: '專業建議：機場 2F 有不少土產店，如果市區沒買夠，這裡還有最後機會。注意托運行李不要超過星宇的限重。' },
-                        { time: '15:30', title: '機場報到與退稅', desc: '星宇航空櫃檯報到，處理免稅單據。', tip: '專業建議：仙台機場國際線較小，過關速度快，但免稅店也較精簡，建議在市區就把大項商品買齊。' },
-                        { time: '17:25', title: '返程班機 JX863', desc: '仙台 (SDJ) ➔ 桃園 (TPE)。預計 20:45 抵達。', tip: '專業建議：回程機上免稅品通常有折扣。這趟多巴胺之旅在降落的一刻圓滿結束，記得在機上填寫入境申報系統。', highlight: true }
+                        { time: '08:30', title: '仙台朝市', desc: '「仙台人的廚房」巡禮。', tip: '專業建議：必吃「朝市丼」，只要 ¥500 就能吃到滿滿海味。' },
+                        { time: '10:30', title: 'S-PAL 採買', desc: '最後的伴手禮衝刺。', tip: '專業建議：S-PAL 的伴手禮區非常集中，可以一次辦理退稅。' },
+                        { time: '13:00', title: '前往仙台機場', desc: '搭乘快鐵僅需 25 分鐘。', tip: '專業建議：確認托運行李重量，不要超過星宇限重。' },
+                        { time: '17:25', title: '起飛 JX863', desc: '預計 20:45 抵達桃園。', highlight: true, tip: '專業建議：回程機上免稅品通常有折扣。這趟多巴胺之旅圓滿結束！' }
                     ]}
                 ];
 
                 const packing = ref([
-                    { category: '雪場專用', icon: 'fa-snowflake', items: [{name: '三層穿衣組', checked: false}, {name: '滑雪護目鏡', checked: false}, {name: '防水手套', checked: false}] },
-                    { category: '電子生存', icon: 'fa-mobile-screen-button', items: [{name: '手機暖暖包', checked: false}, {name: '高容量行動電源', checked: false}, {name: '各國轉接頭', checked: false}] },
-                    { category: '重要文件', icon: 'fa-file-invoice', items: [{name: '護照(正本)', checked: false}, {name: '機票訂位單', checked: false}, {name: '疫苗/保險證明', checked: false}] }
+                    { category: '雪具裝備', icon: 'fa-skiing', items: [{name: '雪衣褲/手套', checked: false}, {name: '防霧護目鏡', checked: false}] },
+                    { category: '電子/配件', icon: 'fa-plug', items: [{name: '行動電源/暖暖包', checked: false}, {name: '防滑冰爪', checked: false}] }
                 ]);
 
+                // 滑動切換邏輯
+                const touchStart = (e) => {
+                    touchStartX = e.changedTouches[0].screenX;
+                };
+
+                const touchEnd = (e) => {
+                    touchEndX = e.changedTouches[0].screenX;
+                    handleSwipe();
+                };
+
+                const handleSwipe = () => {
+                    const threshold = 80; // 滑動距離門檻
+                    if (touchStartX - touchEndX > threshold) {
+                        // 向左滑 -> 下一天
+                        if (typeof currentTab.value === 'number' && currentTab.value < 8) {
+                            currentTab.value++;
+                        } else if (currentTab.value === 8) {
+                            currentTab.value = 'list';
+                        }
+                        autoScrollNav();
+                    } else if (touchEndX - touchStartX > threshold) {
+                        // 向右滑 -> 前一天
+                        if (currentTab.value === 'list') {
+                            currentTab.value = 8;
+                        } else if (typeof currentTab.value === 'number' && currentTab.value > 1) {
+                            currentTab.value--;
+                        }
+                        autoScrollNav();
+                    }
+                };
+
+                // 自動滾動頂部導覽列
+                const autoScrollNav = () => {
+                    setTimeout(() => {
+                        const activeEl = document.getElementById('tab-' + currentTab.value);
+                        if (activeEl) {
+                            activeEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                        }
+                    }, 100);
+                };
+
+                // 長按邏輯
                 const handleTouchStart = (idx, tip) => {
                     pressingIdx.value = idx;
                     pressTimer = setTimeout(() => {
@@ -235,7 +291,7 @@
                     pressingIdx.value = null;
                 };
 
-                return { currentTab, days, packing, activeTip, pressingIdx, handleTouchStart, handleTouchEnd };
+                return { currentTab, days, packing, activeTip, pressingIdx, handleTouchStart, handleTouchEnd, touchStart, touchEnd };
             }
         }).mount('#app');
     </script>
