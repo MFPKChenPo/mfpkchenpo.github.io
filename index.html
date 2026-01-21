@@ -3,295 +3,227 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>2026 極限多巴胺 · 手勢感應版</title>
+    <title>2026 東北雪國 · 終極功能手札</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Noto+Sans+TC:wght@300;500;700&display=swap');
         
-        body { font-family: 'Noto Sans TC', sans-serif; background: #020617; color: #f8fafc; overflow-x: hidden; -webkit-user-select: none; touch-action: pan-y; }
+        body { 
+            font-family: 'Noto Sans TC', sans-serif; 
+            background: #020617; color: #f8fafc; 
+            overflow: hidden;
+            touch-action: none; /* 禁用系統預設手勢，確保長按不被干擾 */
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
         
         .bg-mesh {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
             background: radial-gradient(circle at 10% 20%, #1e1b4b 0%, transparent 40%),
-                        radial-gradient(circle at 90% 80%, #312e81 0%, transparent 40%),
-                        radial-gradient(circle at 50% 50%, #020617 0%, #0f172a 100%);
+                        radial-gradient(circle at 90% 80%, #312e81 0%, transparent 40%);
         }
 
-        /* 炫酷時間軸線條 */
+        .master-container {
+            display: flex; width: 100vw; height: calc(100vh - 165px);
+            overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth;
+            scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+            touch-action: pan-x; /* 僅允許水平滑動切換天數 */
+        }
+
+        .day-page { 
+            flex: 0 0 100vw; width: 100vw; height: 100%; 
+            overflow-y: auto; scroll-snap-align: start; 
+            padding: 24px; box-sizing: border-box;
+            touch-action: pan-y; /* 頁面內允許垂直滾動 */
+        }
+
+        /* 時間線設計 */
         .timeline-container { position: relative; padding-left: 32px; }
         .timeline-line {
-            position: absolute; left: 8px; top: 10px; bottom: 10px;
-            width: 2px;
-            background: linear-gradient(to bottom, #6366f1, #a855f7, #6366f1);
-            box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
-            border-radius: 2px;
+            position: absolute; left: 8px; top: 10px; bottom: 10px; width: 2px;
+            background: linear-gradient(to bottom, #6366f1, #a855f7);
         }
-
-        .glass-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 24px;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            margin-bottom: 24px;
-        }
-
         .timeline-dot {
-            position: absolute; left: -31px; top: 22px;
-            width: 14px; height: 14px;
-            background: #fff; border-radius: 50%;
-            box-shadow: 0 0 12px #fff, 0 0 20px #6366f1;
-            z-index: 10;
+            position: absolute; left: -31px; top: 22px; width: 12px; height: 12px;
+            background: #fff; border-radius: 50%; box-shadow: 0 0 12px #6366f1;
         }
 
-        .is-pressing { transform: scale(0.96); background: rgba(99, 102, 241, 0.15); border-color: #6366f1; }
-
-        .nav-active {
-            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-            box-shadow: 0 0 25px rgba(99, 102, 241, 0.6);
-            color: white !important;
+        /* 字卡回饋 */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; 
+            margin-bottom: 24px; transition: transform 0.1s;
         }
+        
+        /* 物理回饋：按住瞬間縮小 */
+        .glass-card:active { transform: scale(0.95); background: rgba(99, 102, 241, 0.2); }
 
+        .nav-active { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: white !important; }
+
+        /* 專業注意事項彈窗 */
         .popover-blur {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); backdrop-filter: blur(12px);
-            z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 25px;
+            background: rgba(0,0,0,0.92); z-index: 99999;
+            display: flex; align-items: center; justify-content: center; padding: 30px;
         }
 
-        .glow-text { text-shadow: 0 0 15px rgba(99, 102, 241, 0.6); font-family: 'Orbitron', sans-serif; }
-        .hold-hint { font-size: 8px; font-weight: bold; color: rgba(99, 102, 241, 0.8); position: absolute; bottom: 12px; right: 16px; letter-spacing: 1px; }
-
-        /* 左右切換動畫 */
-        .slide-fade-enter-active, .slide-fade-leave-active { transition: all 0.3s ease-out; }
-        .slide-fade-enter-from { opacity: 0; transform: translateX(30px); }
-        .slide-fade-leave-to { opacity: 0; transform: translateX(-30px); }
-
-        [v-cloak] { display: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body class="pb-28">
-    <div id="app" v-cloak @touchstart="touchStart" @touchend="touchEnd">
+<body oncontextmenu="return false;">
+    <div id="app">
         <div class="bg-mesh"></div>
 
-        <transition name="fade">
-            <div v-if="activeTip" class="popover-blur" @click="activeTip = null">
-                <div class="glass-card p-8 border-indigo-500 shadow-2xl max-w-sm text-center">
-                    <div class="w-12 h-12 bg-indigo-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="fa-solid fa-wand-magic-sparkles text-indigo-400 text-xl"></i>
-                    </div>
-                    <h4 class="text-indigo-300 font-bold mb-3 tracking-widest uppercase text-xs">Expert Review</h4>
-                    <p class="text-white/90 leading-relaxed text-sm italic">"{{ activeTip }}"</p>
-                    <div class="mt-6 text-[9px] text-white/30 uppercase tracking-[0.2em]">Swipe to close</div>
-                </div>
+        <div v-if="activeTip" class="popover-blur" @click="activeTip = null">
+            <div class="glass-card p-8 border-indigo-500 max-w-sm text-center shadow-2xl">
+                <div class="text-indigo-400 mb-4 text-3xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <h4 class="text-indigo-300 font-bold mb-4 uppercase text-xs tracking-widest">Expert Review</h4>
+                <p class="text-white text-base leading-relaxed">{{ activeTip }}</p>
+                <p class="mt-6 text-[10px] text-white/30 uppercase tracking-widest italic">Tap anywhere to close</p>
             </div>
-        </transition>
+        </div>
 
-        <header class="p-8 text-center">
-            <h1 class="text-4xl glow-text font-bold text-indigo-400">APPI 2026</h1>
-            <div class="flex items-center justify-center gap-2 mt-2">
-                <span class="h-[1px] w-4 bg-indigo-500/50"></span>
-                <p class="text-[9px] tracking-[0.3em] opacity-40 font-black uppercase text-blue-100">Swipe Left/Right to Switch</p>
-                <span class="h-[1px] w-4 bg-indigo-500/50"></span>
-            </div>
+        <header class="pt-6 pb-2 text-center">
+            <h1 class="text-3xl font-bold text-indigo-400" style="font-family:'Orbitron'">APPI 2026</h1>
+            <p class="text-[9px] tracking-[0.3em] opacity-40 uppercase">長按行程查看注意事項</p>
         </header>
 
-        <nav class="sticky top-0 z-50 px-4 py-4 flex overflow-x-auto no-scrollbar gap-3 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5">
-            <button v-for="n in 8" :key="n" @click="currentTab = n" 
-                :id="'tab-' + n"
-                :class="['flex-none w-12 h-12 rounded-2xl flex items-center justify-center font-bold transition-all border border-white/10 text-white/40', currentTab === n ? 'nav-active' : 'bg-white/5']">
+        <nav class="px-4 py-4 flex overflow-x-auto no-scrollbar gap-2 bg-slate-950/80 border-b border-white/5">
+            <button v-for="n in 8" :key="n" @click="scrollToDay(n)" 
+                :class="['flex-none w-11 h-11 rounded-xl flex items-center justify-center font-bold border border-white/10 text-white/40', currentTab === n ? 'nav-active' : 'bg-white/5']">
                 {{n}}
             </button>
-            <button @click="currentTab = 'list'" 
-                :class="['flex-none px-6 h-12 rounded-2xl flex items-center justify-center font-bold transition-all border border-white/10 text-white/40', currentTab === 'list' ? 'nav-active' : 'bg-white/5']">
+            <button @click="scrollToDay('list')" 
+                :class="['flex-none px-5 h-11 rounded-xl flex items-center justify-center font-bold border border-white/10 text-white/40', currentTab === 'list' ? 'nav-active' : 'bg-white/5']">
                 <i class="fa-solid fa-suitcase"></i>
             </button>
         </nav>
 
-        <main class="px-6 py-6">
-            <transition name="slide-fade" mode="out-in">
-                <div :key="currentTab" v-if="typeof currentTab === 'number'">
-                    <div class="text-center mb-10">
-                        <h2 class="text-3xl font-bold tracking-tight text-white italic uppercase">{{ days[currentTab-1].theme }}</h2>
-                        <p class="text-indigo-400 text-xs font-mono mt-2 tracking-tighter">{{ days[currentTab-1].date }} // {{ days[currentTab-1].loc }}</p>
-                    </div>
+        <div class="master-container no-scrollbar" ref="scrollContainer" @scroll="handleScroll">
+            <div v-for="(day, dIdx) in days" :key="dIdx" class="day-page" :id="'page-'+(dIdx+1)">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-bold text-white italic tracking-tighter">{{ day.theme }}</h2>
+                    <p class="text-indigo-400 text-[10px] font-mono mt-1 uppercase">{{ day.date }} // {{ day.loc }}</p>
+                </div>
 
-                    <div class="timeline-container">
-                        <div class="timeline-line"></div>
+                <div class="timeline-container">
+                    <div class="timeline-line"></div>
+                    <div v-for="(item, iIdx) in day.events" :key="iIdx" 
+                        class="glass-card p-6 relative"
+                        @touchstart="handleTouchStart($event, item.tip)"
+                        @touchend="handleTouchEnd"
+                        @touchmove="handleTouchMove">
                         
-                        <div v-for="(item, idx) in days[currentTab-1].events" :key="idx" 
-                            class="glass-card p-6"
-                            :class="{'is-pressing': pressingIdx === idx}"
-                            @touchstart.stop="handleTouchStart(idx, item.tip)"
-                            @touchend.stop="handleTouchEnd"
-                            @mousedown="handleTouchStart(idx, item.tip)"
-                            @mouseup="handleTouchEnd">
-                            
-                            <div class="timeline-dot"></div>
-                            
-                            <div class="flex justify-between items-center mb-3">
-                                <span class="text-[10px] font-black text-indigo-400 font-mono tracking-widest">{{ item.time }}</span>
-                                <div v-if="item.highlight" class="flex items-center gap-1 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">
-                                    <span class="w-1 h-1 bg-red-500 rounded-full animate-pulse"></span>
-                                    <span class="text-[8px] text-red-400 font-bold uppercase">Must Go</span>
-                                </div>
-                            </div>
-                            
-                            <h3 class="text-lg font-bold text-white/95 leading-tight">{{ item.title }}</h3>
-                            <p class="text-xs text-white/40 mt-2 leading-relaxed font-light">{{ item.desc }}</p>
-                            
-                            <div v-if="item.price" class="mt-4 inline-flex items-center text-emerald-400 text-[10px] font-bold bg-emerald-400/10 px-2 py-1 rounded">
-                                <i class="fa-solid fa-tag mr-1"></i>{{ item.price }}
-                            </div>
+                        <div class="timeline-dot"></div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-[10px] font-black text-indigo-400 font-mono tracking-widest">{{ item.time }}</span>
+                            <span v-if="item.highlight" class="text-[8px] text-red-500 border border-red-500/50 px-1 rounded">重要</span>
+                        </div>
+                        <h3 class="text-lg font-bold text-white/95">{{ item.title }}</h3>
+                        <p class="text-[11px] text-white/40 mt-2 leading-relaxed">{{ item.desc }}</p>
+                    </div>
+                </div>
+            </div>
 
-                            <div class="hold-hint">HOLD</div>
+            <div class="day-page" id="page-list">
+                <h2 class="text-2xl font-bold text-white text-center mb-8 italic uppercase tracking-widest">Packing List</h2>
+                <div v-for="cat in packing" :key="cat.category" class="glass-card p-6 border-t border-indigo-500/50">
+                    <h3 class="text-indigo-300 font-bold mb-5 flex items-center text-xs italic tracking-widest uppercase">
+                        <i :class="['fa-solid mr-3 text-lg', cat.icon]"></i> {{ cat.category }}
+                    </h3>
+                    <div class="grid gap-3">
+                        <div v-for="item in cat.items" :key="item.name" @click="item.checked = !item.checked"
+                            class="flex items-center p-4 rounded-2xl bg-white/5 border border-white/5">
+                            <div :class="['w-5 h-5 rounded border-2 flex items-center justify-center transition-all', item.checked ? 'bg-indigo-500 border-indigo-500' : 'border-white/20']">
+                                <i v-if="item.checked" class="fa-solid fa-check text-white text-[10px]"></i>
+                            </div>
+                            <span :class="['ml-4 text-xs font-light', item.checked ? 'opacity-20 line-through' : 'text-white/80']">{{ item.name }}</span>
                         </div>
                     </div>
                 </div>
-
-                <div :key="'list-view'" v-else class="space-y-6">
-                    <div v-for="cat in packing" :key="cat.category" class="glass-card p-6 border-t-2 border-indigo-500/30">
-                        <h3 class="text-indigo-300 font-bold mb-6 flex items-center italic text-sm">
-                            <i :class="['fa-solid mr-3 text-lg', cat.icon]"></i> {{ cat.category }}
-                        </h3>
-                        <div class="grid gap-3">
-                            <div v-for="item in cat.items" :key="item.name" @click="item.checked = !item.checked"
-                                class="flex items-center p-4 rounded-2xl bg-white/5 border border-white/5 transition-all">
-                                <div :class="['w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all', item.checked ? 'bg-indigo-500 border-indigo-500' : 'border-white/20']">
-                                    <i v-if="item.checked" class="fa-solid fa-check text-white text-xs"></i>
-                                </div>
-                                <div class="ml-4 flex-1">
-                                    <span :class="['text-sm transition-all block', item.checked ? 'opacity-20 line-through' : 'text-white/80']">{{ item.name }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </transition>
-        </main>
-
-        <div class="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-10 px-10 py-5 glass-card border-white/10 shadow-2xl z-50">
-            <button @click="currentTab = 1" class="text-white/30 hover:text-white"><i class="fa-solid fa-home"></i></button>
-            <button @click="currentTab = 8" class="text-indigo-400"><i class="fa-solid fa-plane"></i></button>
-            <button @click="currentTab = 'list'" class="text-white/30 hover:text-white"><i class="fa-solid fa-check-double"></i></button>
+            </div>
         </div>
     </div>
 
     <script>
-        const { createApp, ref, watch } = Vue;
-
+        const { createApp, ref } = Vue;
         createApp({
             setup() {
                 const currentTab = ref(1);
                 const activeTip = ref(null);
-                const pressingIdx = ref(null);
-                let pressTimer = null;
-                
-                // 滑動偵測變數
-                let touchStartX = 0;
-                let touchEndX = 0;
+                let timer = null;
+                let isMoving = false;
+
+                const scrollToDay = (target) => {
+                    const id = target === 'list' ? 'page-list' : 'page-' + target;
+                    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', inline: 'start' });
+                };
+
+                const handleScroll = (e) => {
+                    const index = Math.round(e.target.scrollLeft / window.innerWidth);
+                    currentTab.value = index < 8 ? index + 1 : 'list';
+                };
+
+                // 強力長按邏輯：避開系統預設手勢
+                const handleTouchStart = (e, tip) => {
+                    isMoving = false;
+                    timer = setTimeout(() => {
+                        if (!isMoving) {
+                            activeTip.value = tip;
+                            if (window.navigator.vibrate) window.navigator.vibrate(60);
+                        }
+                    }, 500);
+                };
+
+                const handleTouchMove = () => { isMoving = true; clearTimeout(timer); };
+                const handleTouchEnd = () => { clearTimeout(timer); };
 
                 const days = [
-                    { date: 'FEB 01', loc: 'TAIPEI / SENDAI', theme: 'The Inbound', events: [
-                        { time: '11:50', title: '星宇航 JX862', desc: '台北 ➔ 仙台直飛。', tip: '專業建議：桃園二航廈星宇櫃檯人潮較多，建議使用網路報到。機上胡同燒肉餐點是熱門項，建議提早預訂。' },
-                        { time: '17:30', title: 'APPI 接駁巴士', desc: '仙台機場 ➔ 安比高原。', price: '¥7,000', tip: '專業建議：接駁車司機會在機場入境大廳手持牌子。路程漫長，請在機場超商備妥飲用水。' },
-                        { time: '20:30', title: 'Check-in ANA CP', desc: '入駐安比高原皇冠假日飯店。', tip: '專業建議：飯店非常大，建議睡前看一眼樓層地圖以免迷路。' }
+                    { date: 'FEB 01', loc: 'TPE / SDJ', theme: 'The Inbound', events: [
+                        { time: '11:50', title: '星宇航 JX862', desc: '星宇 A321neo 出發。', tip: '【星宇攻略】報到櫃檯在桃機二航。機上餐胡同燒肉必須在 48H 前官網預訂，現場無法換餐。' },
+                        { time: '17:30', title: 'APPI 機場巴士', desc: '仙台機場 2 號月台。', tip: '【巴士備註】車程 3 小時，中間停一次休息站。仙台機場 1F 門口有 FamilyMart，那是最後的補給點。' },
+                        { time: '20:30', title: 'Check-in ANA CP', desc: '皇冠假日飯店入駐。', tip: '【飯店提醒】B1 有雪具存放櫃。翌日早餐建議 7 點前去，8 點後會排隊排很久。' }
                     ]},
-                    { date: 'FEB 02', loc: 'APPI', theme: 'Snow Therapy', events: [
-                        { time: '09:00', title: 'APPI 滑雪啟動', desc: '初雪挑戰與裝備調整。', price: '¥15,000', tip: '專業建議：雪場租借區人潮多，建議 08:30 就位。' },
-                        { time: '18:00', title: '燒肉 李朝苑', desc: '極致前澤牛享受。', highlight: true, tip: '專業建議：前澤牛油脂豐富，記得配泡菜或生菜中和。' }
+                    { date: 'FEB 02', loc: 'APPI', theme: 'Powder First', events: [
+                        { time: '09:00', title: '安比首滑', desc: '西館山暖身。', tip: '【滑雪安全】安比粉雪乾且細。初滑記得檢查臉部防護，低溫下臉頰很容易凍傷。' },
+                        { time: '18:00', title: '燒肉 李朝苑', desc: '頂級前澤牛享受。', tip: '【必吃建議】前澤牛 A5 油脂豐富，一定要點一份生菜(Sanchu)包著吃。必點烤冷麵。' }
                     ]},
-                    { date: 'FEB 03', loc: 'APPI', theme: 'Infinite Run', events: [
-                        { time: '10:00', title: '西館山巡航', desc: '技術練習與影像紀錄。', tip: '專業建議：西館山的日照充足，適合在 11:00 前拍美照。' },
-                        { time: '17:00', title: '白樺之湯 溫泉', desc: '雪地露天溫泉放鬆。', tip: '專業建議：溫泉出口處有免費冷水供飲用。' }
+                    { date: 'FEB 03', loc: 'APPI', theme: 'Tech Practice', events: [
+                        { time: '10:00', title: '西館山巡航', desc: '滑行錄影。', tip: '【拍片建議】這裡坡度均勻，請同伴在斜前方拍攝。山頂展望台風大，注意手機掉落。' },
+                        { time: '17:00', title: '白樺之湯', desc: '露天溫泉享受。', tip: '【溫泉禮儀】進池前必須在洗手台坐著徹底洗淨。泡完必喝瓶裝岩手鮮奶。' }
                     ]},
-                    { date: 'FEB 04', loc: 'APPI', theme: 'Epic Cruise', events: [
-                        { time: '09:30', title: '5.5KM 頂峰滑走', desc: '全山最長路徑。', tip: '專業建議：早上先看氣象看板，若山頂纜車有開就優先衝山頂。' },
-                        { time: '18:30', title: 'Lapin d\'Or 法餐', desc: '高級法式晚宴。', highlight: true, tip: '專業建議：建議換上較體面的外套，慶祝滑雪行程大成功。' }
+                    { date: 'FEB 04', loc: 'APPI', theme: 'Long Run', events: [
+                        { time: '09:30', title: '5.5KM 滑行挑戰', desc: '全山最長路徑。', tip: '【單板筆記】後半段非常平。看到緩斜面標示前務必保持高速，否則會拆板走路。' },
+                        { time: '18:30', title: 'Lapin d\'Or', desc: '高級法式盛宴。', tip: '【用餐提醒】安比最高評價法餐。建議穿休閒西裝或洋裝，避免穿著滑雪裝或拖鞋進場。' }
                     ]},
                     { date: 'FEB 05', loc: 'SENDAI', theme: 'Urban Shelter', events: [
-                        { time: '13:00', title: '別墅入駐', desc: '仙台包棟別墅 Check-in。', tip: '專業建議：別墅生活適合下廚，可以去超市買宮城草莓與牛奶。' },
-                        { time: '19:00', title: '牛たん閣', desc: '仙台牛舌頂級名店。', highlight: true, tip: '專業建議：牛舌刺身只有這裡吃得出那種甜度，必點。' }
+                        { time: '13:00', title: '別墅 Check-in', desc: '仙台河畔包棟。', tip: '【在地生活】步行 10 分鐘有 AEON 超市。推薦買宮城縣產草莓，這時正值產季極甜。' },
+                        { time: '19:00', title: '牛たん 閣', desc: '仙台牛舌第一名店。', tip: '【老饕點法】一定要排隊。除了烤牛舌，強烈推薦「牛舌刺身」與「番茄沙拉」。' }
                     ]},
-                    { date: 'FEB 06', loc: 'ZAO', theme: 'White Monsters', events: [
-                        { time: '10:00', title: '藏王樹冰', desc: '搭乘纜車觀看雪怪。', price: '¥3,800', tip: '專業建議：山頂極冷！手機容易斷電，請貼著暖暖包放口袋。' },
-                        { time: '15:00', title: '狐狸村', desc: '療癒狐狸觀察。', tip: '專業建議：嚴禁攜帶垂吊飾物，狐狸會搶。' }
+                    { date: 'FEB 06', loc: 'ZAO', theme: 'Ice Monsters', events: [
+                        { time: '10:00', title: '藏王樹冰', desc: '雪怪纜車景觀。', tip: '【保暖警告】山頂極冷且風大。手機貼暖暖包可防斷電。地藏王像被雪埋掉一半是必拍景點。' },
+                        { time: '15:00', title: '狐狸村', desc: '狐狸攝影。', tip: '【攝影注意】嚴禁觸摸狐狸！狐狸會搶晃動物品，背包抽繩、手套吊繩請務必收進口袋。' }
                     ]},
                     { date: 'FEB 07', loc: 'GINZAN', theme: 'Timeless Night', events: [
-                        { time: '11:00', title: '山寺石階挑戰', desc: '雪中千階梯。', tip: '專業建議：階梯濕滑，沒冰爪絕對不要嘗試。' },
-                        { time: '16:45', title: '銀山溫泉點燈', desc: '大正浪漫時刻。', highlight: true, tip: '專業建議：站在第三座橋上能拍到溫泉街全景。' }
+                        { time: '11:00', title: '山寺千階', desc: '雪中石階挑戰。', tip: '【安全裝備】樓梯結冰極滑。登山口有簡易冰爪可買(約¥500)，強烈建議安裝。' },
+                        { time: '16:45', title: '銀山溫泉點燈', desc: '大正浪漫氛圍。', tip: '【拍片點】最佳位點在能登屋前小橋。日落後半小時的藍調時刻搭配點燈最美。' }
                     ]},
-                    { date: 'FEB 08', loc: 'SENDAI / TAIPEI', theme: 'Final Legacy', events: [
-                        { time: '08:30', title: '仙台朝市', desc: '「仙台人的廚房」巡禮。', tip: '專業建議：必吃「朝市丼」，只要 ¥500 就能吃到滿滿海味。' },
-                        { time: '10:30', title: 'S-PAL 採買', desc: '最後的伴手禮衝刺。', tip: '專業建議：S-PAL 的伴手禮區非常集中，可以一次辦理退稅。' },
-                        { time: '13:00', title: '前往仙台機場', desc: '搭乘快鐵僅需 25 分鐘。', tip: '專業建議：確認托運行李重量，不要超過星宇限重。' },
-                        { time: '17:25', title: '起飛 JX863', desc: '預計 20:45 抵達桃園。', highlight: true, tip: '專業建議：回程機上免稅品通常有折扣。這趟多巴胺之旅圓滿結束！' }
+                    { date: 'FEB 08', loc: 'SDJ / TPE', theme: 'Final Legacy', events: [
+                        { time: '08:30', title: '仙台朝市', desc: '海鮮廚房。', tip: '【必吃】朝市丼只需 ¥500。大多數攤位只收現金，記得帶足現金。' },
+                        { time: '10:30', title: 'S-PAL 購物', desc: '最終退稅。', tip: '【購物撇步】伴手禮推萩之月。退稅櫃檯在 S-PAL II 2樓。機場免稅店小，藥妝請在市區買齊。' },
+                        { time: '17:25', title: '返程 JX863', desc: '仙台回台北。', tip: '【報到提醒】仙台機場報到櫃檯少，建議提早 2.5 小時抵達。隨身行李重量限額請留意。' }
                     ]}
                 ];
 
                 const packing = ref([
-                    { category: '雪具裝備', icon: 'fa-skiing', items: [{name: '雪衣褲/手套', checked: false}, {name: '防霧護目鏡', checked: false}] },
-                    { category: '電子/配件', icon: 'fa-plug', items: [{name: '行動電源/暖暖包', checked: false}, {name: '防滑冰爪', checked: false}] }
+                    { category: '滑雪專業', icon: 'fa-person-skiing', items: [{name: '簡易冰爪 (山寺/銀山必備)', checked: false}, {name: '滑雪鏡(防霧)與雪手套', checked: false}, {name: '防風護臉/脖圍', checked: false}, {name: '雪襪與羊毛底層衣', checked: false}] },
+                    { category: '生活電子', icon: 'fa-battery-full', items: [{name: '手機暖暖包 (防極低溫斷電)', checked: false}, {name: '行動電源 (10000mAh+)', checked: false}, {name: '護照/漫遊卡/VJW QR碼', checked: false}, {name: '相機記憶卡與備用電池', checked: false}] },
+                    { category: '雪國藥品', icon: 'fa-pills', items: [{name: '休足時間 (緩解腿部痠痛)', checked: false}, {name: 'EVE 止痛藥 (雪地必備)', checked: false}, {name: '高效保濕乳液與護唇膏', checked: false}, {name: '綜合感冒藥/發燒藥', checked: false}] }
                 ]);
 
-                // 滑動切換邏輯
-                const touchStart = (e) => {
-                    touchStartX = e.changedTouches[0].screenX;
-                };
-
-                const touchEnd = (e) => {
-                    touchEndX = e.changedTouches[0].screenX;
-                    handleSwipe();
-                };
-
-                const handleSwipe = () => {
-                    const threshold = 80; // 滑動距離門檻
-                    if (touchStartX - touchEndX > threshold) {
-                        // 向左滑 -> 下一天
-                        if (typeof currentTab.value === 'number' && currentTab.value < 8) {
-                            currentTab.value++;
-                        } else if (currentTab.value === 8) {
-                            currentTab.value = 'list';
-                        }
-                        autoScrollNav();
-                    } else if (touchEndX - touchStartX > threshold) {
-                        // 向右滑 -> 前一天
-                        if (currentTab.value === 'list') {
-                            currentTab.value = 8;
-                        } else if (typeof currentTab.value === 'number' && currentTab.value > 1) {
-                            currentTab.value--;
-                        }
-                        autoScrollNav();
-                    }
-                };
-
-                // 自動滾動頂部導覽列
-                const autoScrollNav = () => {
-                    setTimeout(() => {
-                        const activeEl = document.getElementById('tab-' + currentTab.value);
-                        if (activeEl) {
-                            activeEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-                        }
-                    }, 100);
-                };
-
-                // 長按邏輯
-                const handleTouchStart = (idx, tip) => {
-                    pressingIdx.value = idx;
-                    pressTimer = setTimeout(() => {
-                        activeTip.value = tip;
-                        if (window.navigator.vibrate) window.navigator.vibrate(20);
-                    }, 500);
-                };
-
-                const handleTouchEnd = () => {
-                    clearTimeout(pressTimer);
-                    pressingIdx.value = null;
-                };
-
-                return { currentTab, days, packing, activeTip, pressingIdx, handleTouchStart, handleTouchEnd, touchStart, touchEnd };
+                return { currentTab, days, packing, activeTip, scrollToDay, handleScroll, handleTouchStart, handleTouchEnd, handleTouchMove };
             }
         }).mount('#app');
     </script>
